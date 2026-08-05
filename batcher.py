@@ -103,8 +103,9 @@ def create_channel_batches(channel_config: dict) -> list[dict]:
             total_batch_size += os.path.getsize(dest_file)
 
             # Build row using channel-specific CSV properties
+            # video_name must exactly match the .mp4 filename inside the ZIP
             csv_rows.append([
-                safe_name,
+                f"{safe_name}.mp4",
                 defaults.get("categories_name", "Entertainment"),
                 defaults.get("age_groups", ""),
                 defaults.get("channel_name", channel_config.get("name", channel_id)),
