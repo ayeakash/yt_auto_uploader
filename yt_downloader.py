@@ -193,6 +193,8 @@ def download_channel_videos(channel_config: dict, max_videos: int = 10) -> list[
                 log.info(f"  Successfully downloaded ({file_size / (1024*1024):.1f} MB): {actual_file}")
             else:
                 log.error(f"  Downloaded file not found for {vid}")
+        except subprocess.CalledProcessError as e:
+            log.error(f"  Failed to download video {vid}: {e.stderr.strip()[-1500:]}")
         except Exception as e:
             log.error(f"  Failed to download video {vid}: {e}")
 
