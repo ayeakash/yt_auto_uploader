@@ -20,7 +20,7 @@ log = logging.getLogger(__name__)
 
 
 def _yt_dlp_cmd() -> list[str]:
-    cmd = [sys.executable, "-m", "yt_dlp", "--no-update"]
+    cmd = [sys.executable, "-m", "yt_dlp", "--no-update", "--remote-components", "ejs:github"]
     if os.path.isfile(YT_COOKIES_FILE):
         cmd += ["--cookies", YT_COOKIES_FILE]
     return cmd
