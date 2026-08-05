@@ -1,0 +1,21 @@
+# Python & virtual environment
+__pycache__/
+*.pyc
+.env
+venv/
+.venv/
+
+# Claude Code local settings
+.claude/settings.local.json
+
+# Secret credentials (DO NOT COMMIT)
+credentials.py
+
+# Downloaded videos and generated batches
+downloads/
+batches/
+logs/
+
+# Preserve registries directory structure in git
+!registries/
+!registries/.gitkeep

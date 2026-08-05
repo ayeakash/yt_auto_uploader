@@ -1,0 +1,72 @@
+{
+  "channels": [
+    {
+      "id": "BillionBuilders",
+      "name": "Billion Builders",
+      "url": "https://www.youtube.com/@BillionBuilders",
+      "batch_prefix": "Batch_BB",
+      "max_videos_per_run": 20,
+      "csv_defaults": {
+        "channel_name": "Billion Builders",
+        "categories_name": "Entertainment",
+        "age_groups": "",
+        "tags": "",
+        "playlist_name": "",
+        "content_formats": "",
+        "content_types": "Original",
+        "language": "English"
+      }
+    },
+    {
+      "id": "BabyBillionn",
+      "name": "BabyBillion",
+      "url": "https://www.youtube.com/@BabyBillionn",
+      "batch_prefix": "Batch_BN",
+      "max_videos_per_run": 20,
+      "csv_defaults": {
+        "channel_name": "BabyBillion",
+        "categories_name": "Entertainment",
+        "age_groups": "",
+        "tags": "",
+        "playlist_name": "",
+        "content_formats": "",
+        "content_types": "Original",
+        "language": "Hindi"
+      }
+    },
+    {
+      "id": "BabyBillion_2",
+      "name": "BabyBillion_2",
+      "url": "https://www.youtube.com/@BabyBillion_2.0",
+      "batch_prefix": "Batch_BB2",
+      "max_videos_per_run": 20,
+      "csv_defaults": {
+        "channel_name": "BabyBillion_2",
+        "categories_name": "Entertainment",
+        "age_groups": "",
+        "tags": "",
+        "playlist_name": "",
+        "content_formats": "",
+        "content_types": "Original",
+        "language": "Hindi"
+      }
+    },
+    {
+      "id": "BLURO",
+      "name": "BLURO",
+      "url": "https://www.youtube.com/@BLUROChannel",
+      "batch_prefix": "Batch_BLU",
+      "max_videos_per_run": 20,
+      "csv_defaults": {
+        "channel_name": "BLURO",
+        "categories_name": "Entertainment",
+        "age_groups": "",
+        "tags": "",
+        "playlist_name": "",
+        "content_formats": "",
+        "content_types": "Original",
+        "language": "Hindi"
+      }
+    }
+  ]
+}
