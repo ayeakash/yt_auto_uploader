@@ -86,37 +86,50 @@ python yt_auto_uploader/main.py --skip-upload
 
 ---
 
-## ⏰ Automated Cron Schedule (Optional)
+## 🐍 Local Environment Setup
 
-To run automatically in the background on macOS/Linux using `crontab` (e.g., every 6 hours):
+YouTube's current anti-bot measures (SABR streaming restrictions, JS signature challenges) require a recent yt-dlp build, which in turn requires **Python 3.10+**. Set up a dedicated venv:
 
-1. Open crontab: `crontab -e`
-2. Add the following entry (adjust paths to your environment):
-```cron
-0 */6 * * * cd /Users/akashmarkad/Akash/Code/yt_auto_uploader && /usr/bin/python3 main.py --headless >> logs/cron.log 2>&1
+```bash
+python3.10+ -m venv .venv
+.venv/bin/pip install --upgrade pip
+.venv/bin/pip install "git+https://github.com/yt-dlp/yt-dlp.git" selenium webdriver-manager
 ```
+
+`deno` must also be on `PATH` (`brew install deno`) — yt-dlp uses it to solve YouTube's JS challenges and to run the `bgutil` PO-token script provider automatically.
+
+**No YouTube cookies are needed.** Testing showed that authenticated (cookie-based) requests trigger YouTube's PO-token/SABR restrictions and cap out around 360p, while anonymous requests from a residential IP reliably get full quality (1080p+). Cookies also expire/get invalidated quickly under repeated automated use. Just don't create a `cookies.txt` in the project root and the pipeline runs cookie-free.
 
 ---
 
-## ⚡ Running in GitHub Actions (Recommended)
+## ⏰ Automated Daily Run (launchd)
 
-A pre-configured GitHub Actions workflow is provided in [`.github/workflows/auto_uploader.yml`](file:///Users/akashmarkad/Akash/Code/yt_auto_uploader/.github/workflows/auto_uploader.yml). It automatically runs **once every day at 00:00 UTC** and can also be triggered manually from the GitHub Actions tab.
+This automation runs locally via **launchd** rather than a cloud CI service — YouTube blocks/throttles requests from shared datacenter IPs (GitHub Actions, GitLab CI, any rented VPS), so it must run from a residential IP such as this Mac.
 
-### Setup Steps:
+A launchd agent is installed at `~/Library/LaunchAgents/com.babybillion.ytautouploader.plist`, running `main.py --headless` daily at **5:30 AM IST (00:00 UTC)**. Your Mac must be on and awake at that time.
 
-1. **Push this repository to GitHub**.
-2. **Add Repository Secrets**:
-   - Go to **Settings > Secrets and variables > Actions > New repository secret**.
-   - Add **`BB_USERNAME`**: Your CMS login username/email.
-   - Add **`BB_PASSWORD`**: Your CMS login password.
-3. **Enable Workflow Permissions** (for saving deduplication state):
-   - Go to **Settings > Actions > General > Workflow permissions**.
-   - Select **Read and write permissions** (so the action can commit updated tracking files in `registries/`).
+```bash
+# Check status
+launchctl print gui/501/com.babybillion.ytautouploader
 
-Now, GitHub Actions will automatically monitor your configured YouTube channels, download new uploads, package them into batches, and post them directly to `admin.babybillion.in` completely hands-free!
+# Trigger manually (outside the schedule)
+launchctl kickstart gui/501/com.babybillion.ytautouploader
+
+# View output
+tail -f logs/launchd_stdout.log logs/launchd_stderr.log
+
+# Disable
+launchctl bootout gui/501/com.babybillion.ytautouploader
+
+# Re-enable after editing the plist
+launchctl bootstrap gui/501 ~/Library/LaunchAgents/com.babybillion.ytautouploader.plist
+```
+
+To change the schedule, edit the `StartCalendarInterval` block in the plist and re-bootstrap.
 
 ---
 
 ## 🔒 Security Notice
-- Credentials are standardly stored in `credentials.py`.
-- `credentials.py`, `downloads/`, `batches/`, and `registries/` are excluded from Git via `.gitignore`.
+- Credentials are stored in `credentials.py`.
+- `credentials.py`, `cookies.txt`, `downloads/`, `batches/`, and `logs/` are excluded from Git via `.gitignore`.
+- This repo is kept on GitHub for source control/backup only — no CI workflow runs against it, since cloud IPs get blocked by YouTube.
