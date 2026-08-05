@@ -9,7 +9,7 @@ import time
 import logging
 from config import (
     ADMIN_LOGIN_URL, ADMIN_UPLOAD_URL, ADMIN_BASE_URL,
-    BB_USERNAME, BB_PASSWORD, SELENIUM_WAIT_SEC, UPLOAD_RETRY_MAX
+    BB_USERNAME, BB_PASSWORD, SELENIUM_WAIT_SEC, UPLOAD_RETRY_MAX, LOG_DIR
 )
 
 log = logging.getLogger(__name__)
@@ -115,11 +115,13 @@ var indicators = {
 };
 return JSON.stringify(indicators);
 """
-    MAX_POLLS = 60
+    MAX_POLLS = 160  # ~8 minutes; larger batches can take a while to process server-side
+    last_comp = "{}"
     for poll_num in range(1, MAX_POLLS + 1):
         time.sleep(3)
         try:
             raw_comp = driver.execute_script(JS_COMPLETION) or "{}"
+            last_comp = raw_comp
             import json as _json
             comp = _json.loads(raw_comp)
 
@@ -139,10 +141,20 @@ return JSON.stringify(indicators);
             if comp.get("isComplete"):
                 log.info("Batch completion detected on dashboard.")
                 return f"job_auto_{int(time.time())}"
+
+            if poll_num % 10 == 0:
+                log.info(f"  Still waiting for Job ID (poll #{poll_num}/{MAX_POLLS})… url={driver.current_url} indicators={raw_comp}")
         except Exception as e:
             log.warning(f"Polling warning (poll #{poll_num}): {e}")
 
-    log.error("Timed out waiting for upload completion / Job ID.")
+    log.error(f"Timed out waiting for upload completion / Job ID. Last URL: {driver.current_url}. Last indicators: {last_comp}")
+    try:
+        os.makedirs(LOG_DIR, exist_ok=True)
+        shot_path = os.path.join(LOG_DIR, f"upload_timeout_{int(time.time())}.png")
+        driver.save_screenshot(shot_path)
+        log.error(f"Saved timeout screenshot: {shot_path}")
+    except Exception as e:
+        log.warning(f"Could not save timeout screenshot: {e}")
     return None
 
 
