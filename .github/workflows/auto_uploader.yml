@@ -82,5 +82,6 @@ jobs:
           path: |
             logs/*.log
             logs/*.png
+            batches/*.csv
           if-no-files-found: ignore
           retention-days: 14
