@@ -8,6 +8,7 @@ import sys
 import re
 import json
 import logging
+import functools
 import subprocess
 from pathlib import Path
 
@@ -19,8 +20,23 @@ from registry import load_registry, save_registry, record_video_download, is_vid
 log = logging.getLogger(__name__)
 
 
+@functools.lru_cache(maxsize=1)
+def _supports_remote_components() -> bool:
+    """Older yt-dlp installs don't recognize --remote-components and hard-error on it."""
+    try:
+        res = subprocess.run(
+            [sys.executable, "-m", "yt_dlp", "--help"],
+            capture_output=True, text=True, timeout=15
+        )
+        return "--remote-components" in res.stdout
+    except Exception:
+        return False
+
+
 def _yt_dlp_cmd() -> list[str]:
-    cmd = [sys.executable, "-m", "yt_dlp", "--no-update", "--remote-components", "ejs:github"]
+    cmd = [sys.executable, "-m", "yt_dlp", "--no-update"]
+    if _supports_remote_components():
+        cmd += ["--remote-components", "ejs:github"]
     if os.path.isfile(YT_COOKIES_FILE):
         cmd += ["--cookies", YT_COOKIES_FILE]
     return cmd
