@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import os
 import re
+import json
 import time
 import logging
 from config import (
@@ -161,6 +162,81 @@ return JSON.stringify(indicators);
     return None
 
 
+# Match the real submit control by its own label. Note the page also has an
+# "Upload" tab and an "Upload History" tab: any locator loose enough to match
+# "Upload" (or the first button on the page) silently grabs a tab instead --
+# see click_submit_and_verify below.
+JS_CLICK_SUBMIT = """
+var btn = Array.from(document.querySelectorAll('button')).find(function (b) {
+    var t = (b.textContent || '').trim();
+    return t.indexOf('Submit') !== -1 && t.indexOf('Approval') === -1;
+});
+if (!btn) { return 'not_found'; }
+if (btn.disabled) { return 'disabled'; }
+btn.click();
+return 'clicked';
+"""
+
+JS_SUBMIT_ACCEPTED = """
+var body = document.body ? (document.body.innerText || '') : '';
+return JSON.stringify({
+    moved: body.indexOf('Uploading files') !== -1 || body.indexOf('Processing') !== -1
+        || body.indexOf('Batch status') !== -1 || body.indexOf('Upload is paused') !== -1
+        || body.indexOf('is complete') !== -1,
+    stillReady: body.indexOf('ready to submit') !== -1
+});
+"""
+
+
+def click_submit_and_verify(driver, timeout: int = 180) -> bool:
+    """Press 'Submit & Process' and confirm the app actually reacted.
+
+    The bug this replaces: the button was located with
+
+        //button[contains(text(), 'Upload') or contains(text(), 'Submit')
+                 or @type='submit']
+
+    and find_element returns the first match in document order -- which on
+    this page is the "Upload" *tab*, not the submit button. So every run
+    clicked the already-active tab: no exception, no state change, and then
+    an 8-minute poll for a Job ID that could never arrive. It also made the
+    "wait for enabled" step meaningless, since a tab is never disabled.
+
+    Hence: locate by the button's own label, wait for it to genuinely
+    enable (the CMS validates the CSV/ZIP client-side first, which scales
+    with ZIP size), then verify the page actually left the "ready to
+    submit" state instead of trusting the click.
+    """
+    deadline = time.time() + timeout
+    attempts = 0
+
+    while time.time() < deadline:
+        state = driver.execute_script(JS_CLICK_SUBMIT)
+
+        if state == "disabled":
+            time.sleep(1)
+            continue
+        if state == "not_found":
+            log.warning("Submit button not on the page yet…")
+            time.sleep(1)
+            continue
+
+        attempts += 1
+        log.info(f"Clicked 'Submit & Process' (attempt {attempts}); verifying it registered…")
+
+        for _ in range(20):  # up to ~10s for React to react
+            time.sleep(0.5)
+            probe = json.loads(driver.execute_script(JS_SUBMIT_ACCEPTED) or "{}")
+            if probe.get("moved") or not probe.get("stillReady"):
+                log.info("Submit accepted -- upload/processing has started.")
+                return True
+
+        log.warning(f"Click #{attempts} left the page on 'ready to submit'; retrying…")
+
+    log.error(f"Submit button never responded after {attempts} click attempt(s).")
+    return False
+
+
 def upload_batch_files(driver, csv_path: str, zip_path: str) -> str | None:
     _, _, _, By, WebDriverWait, EC, TimeoutException, NoSuchElementException, _ = _get_selenium()
 
@@ -176,12 +252,18 @@ def upload_batch_files(driver, csv_path: str, zip_path: str) -> str | None:
         time.sleep(3)
 
     try:
-        # Find file inputs
-        file_inputs = driver.find_elements(By.CSS_SELECTOR, "input[type='file']")
-        if len(file_inputs) < 2:
-            log.error(f"Expected at least 2 file inputs, found {len(file_inputs)}")
+        # The upload form renders client-side, so the inputs may not exist yet
+        # on first look -- wait for both rather than failing the whole batch.
+        try:
+            WebDriverWait(driver, SELENIUM_WAIT_SEC).until(
+                lambda d: len(d.find_elements(By.CSS_SELECTOR, "input[type='file']")) >= 2
+            )
+        except TimeoutException:
+            found = len(driver.find_elements(By.CSS_SELECTOR, "input[type='file']"))
+            log.error(f"Expected at least 2 file inputs, found {found} after {SELENIUM_WAIT_SEC}s")
             return None
 
+        file_inputs = driver.find_elements(By.CSS_SELECTOR, "input[type='file']")
         csv_input = file_inputs[0]
         zip_input = file_inputs[1]
 
@@ -192,21 +274,9 @@ def upload_batch_files(driver, csv_path: str, zip_path: str) -> str | None:
         log.info(f"Attaching ZIP: {zip_path}")
         zip_input.send_keys(os.path.abspath(zip_path))
 
-        upload_btn_locator = (
-            By.XPATH,
-            "//button[contains(text(), 'Upload') or contains(text(), 'Submit') or @type='submit']"
-        )
-
-        # A large ZIP takes real time to validate client-side before the button
-        # enables. React re-renders/replaces the button on that transition, so
-        # a WebElement captured beforehand goes stale -- clicking it silently
-        # does nothing (no exception, no visible effect). element_to_be_clickable
-        # re-locates the element fresh at the moment it becomes clickable.
-        log.info("Waiting for Submit button to become clickable (client-side file validation)...")
-        upload_btn = WebDriverWait(driver, 120).until(EC.element_to_be_clickable(upload_btn_locator))
-
-        log.info("Clicking Upload button...")
-        upload_btn.click()
+        log.info("Waiting for Submit button to enable (client-side file validation)...")
+        if not click_submit_and_verify(driver):
+            return None
 
         return capture_job_id(driver)
     except Exception as e:
