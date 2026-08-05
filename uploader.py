@@ -111,7 +111,10 @@ var indicators = {
     hasProcessedResults: body.indexOf('Processed Results') !== -1,
     hasSubmitForApproval: body.indexOf('Submit Batch for Approval') !== -1,
     hasCompletedWaiting: body.indexOf('completed and waiting') !== -1,
+    hasUploadPaused: body.indexOf('Upload is paused') !== -1,
+    hasBatchComplete: body.indexOf('is complete') !== -1,
     isComplete: body.indexOf('Processed Results') !== -1 || body.indexOf('Submit Batch for Approval') !== -1
+        || body.indexOf('Upload is paused') !== -1 || body.indexOf('is complete') !== -1
 };
 return JSON.stringify(indicators);
 """
@@ -188,13 +191,20 @@ def upload_batch_files(driver, csv_path: str, zip_path: str) -> str | None:
 
         log.info(f"Attaching ZIP: {zip_path}")
         zip_input.send_keys(os.path.abspath(zip_path))
-        time.sleep(1)
 
-        # Look for upload button
-        upload_btn = driver.find_element(
+        upload_btn_locator = (
             By.XPATH,
             "//button[contains(text(), 'Upload') or contains(text(), 'Submit') or @type='submit']"
         )
+
+        # A large ZIP takes real time to validate client-side before the button
+        # enables. React re-renders/replaces the button on that transition, so
+        # a WebElement captured beforehand goes stale -- clicking it silently
+        # does nothing (no exception, no visible effect). element_to_be_clickable
+        # re-locates the element fresh at the moment it becomes clickable.
+        log.info("Waiting for Submit button to become clickable (client-side file validation)...")
+        upload_btn = WebDriverWait(driver, 120).until(EC.element_to_be_clickable(upload_btn_locator))
+
         log.info("Clicking Upload button...")
         upload_btn.click()
 

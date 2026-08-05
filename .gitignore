@@ -6,7 +6,7 @@ venv/
 .venv/
 
 # Claude Code local settings
-.claude/settings.local.json
+.claude/
 
 # Secret credentials (DO NOT COMMIT)
 credentials.py
