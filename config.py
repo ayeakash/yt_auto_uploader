@@ -45,6 +45,10 @@ BATCHES_DIR   = os.path.join(BASE_DIR, "batches")
 LOG_DIR       = os.path.join(BASE_DIR, "logs")
 REGISTRY_DIR  = os.path.join(BASE_DIR, "registries")
 
+# ── YouTube cookies (to bypass "Sign in to confirm you're not a bot") ───────────
+# Exported cookies.txt from a logged-in YouTube session. Only used if present.
+YT_COOKIES_FILE = os.environ.get("YT_COOKIES_FILE", os.path.join(BASE_DIR, "cookies.txt"))
+
 # Ensure required directories exist
 for d in [DOWNLOADS_DIR, BATCHES_DIR, LOG_DIR, REGISTRY_DIR]:
     os.makedirs(d, exist_ok=True)

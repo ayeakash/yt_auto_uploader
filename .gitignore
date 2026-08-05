@@ -10,6 +10,7 @@ venv/
 
 # Secret credentials (DO NOT COMMIT)
 credentials.py
+cookies.txt
 
 # Downloaded videos and generated batches
 downloads/

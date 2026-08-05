@@ -13,14 +13,17 @@ from pathlib import Path
 
 from datetime import datetime
 
-from config import DOWNLOADS_DIR, CUTOFF_UPLOAD_DATE
+from config import DOWNLOADS_DIR, CUTOFF_UPLOAD_DATE, YT_COOKIES_FILE
 from registry import load_registry, save_registry, record_video_download, is_video_processed
 
 log = logging.getLogger(__name__)
 
 
 def _yt_dlp_cmd() -> list[str]:
-    return [sys.executable, "-m", "yt_dlp", "--no-update"]
+    cmd = [sys.executable, "-m", "yt_dlp", "--no-update"]
+    if os.path.isfile(YT_COOKIES_FILE):
+        cmd += ["--cookies", YT_COOKIES_FILE]
+    return cmd
 
 
 def fetch_video_details(video_url: str) -> dict:
