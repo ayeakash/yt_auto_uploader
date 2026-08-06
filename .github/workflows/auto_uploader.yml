@@ -60,6 +60,12 @@ jobs:
           sudo apt-get install -y google-chrome-stable
           google-chrome --version
 
+      # ── 3b. Install Deno (required by yt-dlp for YouTube JS challenge) ─────────
+      - name: Install Deno
+        run: |
+          curl -fsSL https://deno.land/install.sh | sh
+          echo "$HOME/.deno/bin" >> $GITHUB_PATH
+
       # ── 4. Install Python dependencies ─────────────────────────────────────────
       - name: Install Python dependencies
         run: pip install -r requirements.txt
@@ -121,6 +127,7 @@ jobs:
           BB_USERNAME: ${{ secrets.BB_USERNAME }}
           BB_PASSWORD: ${{ secrets.BB_PASSWORD }}
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          YT_COOKIES_FILE: ${{ github.workspace }}/cookies.txt
         run: |
           # Start a virtual display for Chrome (even in headless=new mode, some
           # Chrome builds still need an X display on Linux)
