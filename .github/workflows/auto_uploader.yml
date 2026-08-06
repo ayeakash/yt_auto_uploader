@@ -85,12 +85,15 @@ jobs:
 
       # ── 6. Restore cookies.txt from secret (if provided) ───────────────────────
       - name: Restore YouTube cookies.txt
-        if: ${{ secrets.YT_COOKIES_B64 != '' }}
         env:
           YT_COOKIES_B64: ${{ secrets.YT_COOKIES_B64 }}
         run: |
-          echo "$YT_COOKIES_B64" | base64 --decode > cookies.txt
-          echo "cookies.txt restored ($(wc -l < cookies.txt) lines)."
+          if [ -z "$YT_COOKIES_B64" ]; then
+            echo "YT_COOKIES_B64 secret not set — skipping cookies.txt restore."
+          else
+            echo "$YT_COOKIES_B64" | base64 --decode > cookies.txt
+            echo "cookies.txt restored ($(wc -l < cookies.txt) lines)."
+          fi
 
       # ── 7. Restore registries from cache ───────────────────────────────────────
       - name: Cache registries
