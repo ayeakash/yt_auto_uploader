@@ -1,0 +1,166 @@
+name: YouTube Auto Uploader
+
+on:
+  # Run every day at 2:00 AM UTC (7:30 AM IST)
+  schedule:
+    - cron: "0 2 * * *"
+
+  # Allow manual trigger with optional overrides
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: "Specific channel ID to process (leave blank for all)"
+        required: false
+        default: ""
+      max_videos:
+        description: "Max videos to fetch per channel (leave blank for channel default)"
+        required: false
+        default: ""
+      skip_upload:
+        description: "Skip upload phase (download + batch only)"
+        required: false
+        type: boolean
+        default: false
+      dry_run:
+        description: "Dry-run only (no downloads or uploads)"
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  run-pipeline:
+    name: Run YT Auto-Upload Pipeline
+    runs-on: ubuntu-latest
+
+    steps:
+      # ── 1. Checkout repo ───────────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # Need write access to commit registry updates back
+          token: ${{ secrets.GH_PAT || github.token }}
+          fetch-depth: 0
+
+      # ── 2. Set up Python ───────────────────────────────────────────────────────
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      # ── 3. Install Chrome (for Selenium headless) ──────────────────────────────
+      - name: Install Google Chrome
+        run: |
+          wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | \
+            sudo gpg --dearmor -o /usr/share/keyrings/google-chrome-keyring.gpg
+          echo "deb [arch=amd64 signed-by=/usr/share/keyrings/google-chrome-keyring.gpg] \
+            http://dl.google.com/linux/chrome/deb/ stable main" | \
+            sudo tee /etc/apt/sources.list.d/google-chrome.list
+          sudo apt-get update -qq
+          sudo apt-get install -y google-chrome-stable
+          google-chrome --version
+
+      # ── 4. Install Python dependencies ─────────────────────────────────────────
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
+      # ── 5. Write credentials.py from GitHub Secrets ────────────────────────────
+      - name: Write credentials.py
+        env:
+          BB_USERNAME: ${{ secrets.BB_USERNAME }}
+          BB_PASSWORD: ${{ secrets.BB_PASSWORD }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          python - << 'EOF'
+          import os
+          lines = [
+              f'BB_USERNAME = {repr(os.environ["BB_USERNAME"])}',
+              f'BB_PASSWORD = {repr(os.environ["BB_PASSWORD"])}',
+              f'SLACK_WEBHOOK_URL = {repr(os.environ.get("SLACK_WEBHOOK_URL", ""))}',
+          ]
+          with open("credentials.py", "w") as f:
+              f.write("\n".join(lines) + "\n")
+          print("credentials.py written successfully.")
+          EOF
+
+      # ── 6. Restore cookies.txt from secret (if provided) ───────────────────────
+      - name: Restore YouTube cookies.txt
+        if: ${{ secrets.YT_COOKIES_B64 != '' }}
+        env:
+          YT_COOKIES_B64: ${{ secrets.YT_COOKIES_B64 }}
+        run: |
+          echo "$YT_COOKIES_B64" | base64 --decode > cookies.txt
+          echo "cookies.txt restored ($(wc -l < cookies.txt) lines)."
+
+      # ── 7. Restore registries from cache ───────────────────────────────────────
+      - name: Cache registries
+        uses: actions/cache@v4
+        with:
+          path: registries/
+          key: registries-${{ github.run_id }}
+          restore-keys: |
+            registries-
+
+      # ── 8. Build pipeline CLI args ─────────────────────────────────────────────
+      - name: Build pipeline arguments
+        id: args
+        run: |
+          ARGS="--headless"
+
+          CHANNEL="${{ github.event.inputs.channel }}"
+          if [ -n "$CHANNEL" ]; then
+            ARGS="$ARGS --channel $CHANNEL"
+          fi
+
+          MAX_VIDEOS="${{ github.event.inputs.max_videos }}"
+          if [ -n "$MAX_VIDEOS" ]; then
+            ARGS="$ARGS --max-videos $MAX_VIDEOS"
+          fi
+
+          if [ "${{ github.event.inputs.skip_upload }}" = "true" ]; then
+            ARGS="$ARGS --skip-upload"
+          fi
+
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            ARGS="$ARGS --dry-run"
+          fi
+
+          echo "PIPELINE_ARGS=$ARGS" >> $GITHUB_OUTPUT
+          echo "Pipeline will run with args: $ARGS"
+
+      # ── 9. Run the pipeline ─────────────────────────────────────────────────────
+      - name: Run auto-uploader pipeline
+        env:
+          DISPLAY: ":99"
+        run: |
+          # Start a virtual display for Chrome (even in headless=new mode, some
+          # Chrome builds still need an X display on Linux)
+          sudo apt-get install -y xvfb > /dev/null 2>&1
+          Xvfb :99 -screen 0 1400x900x24 &
+          sleep 2
+
+          python main.py ${{ steps.args.outputs.PIPELINE_ARGS }}
+
+      # ── 10. Upload logs as artifact ─────────────────────────────────────────────
+      - name: Upload run logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pipeline-logs-${{ github.run_id }}
+          path: logs/
+          retention-days: 14
+
+      # ── 11. Commit updated registries back to repo ─────────────────────────────
+      - name: Commit updated registries
+        if: ${{ !cancelled() && github.event.inputs.dry_run != 'true' }}
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add registries/
+          if git diff --cached --quiet; then
+            echo "No registry changes to commit."
+          else
+            git commit -m "chore: update registries after pipeline run [skip ci]"
+            git push
+          fi
