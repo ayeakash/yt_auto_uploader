@@ -64,24 +64,7 @@ jobs:
       - name: Install Python dependencies
         run: pip install -r requirements.txt
 
-      # ── 5. Write credentials.py from GitHub Secrets ────────────────────────────
-      - name: Write credentials.py
-        env:
-          BB_USERNAME: ${{ secrets.BB_USERNAME }}
-          BB_PASSWORD: ${{ secrets.BB_PASSWORD }}
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-        run: |
-          python - << 'EOF'
-          import os
-          lines = [
-              f'BB_USERNAME = {repr(os.environ["BB_USERNAME"])}',
-              f'BB_PASSWORD = {repr(os.environ["BB_PASSWORD"])}',
-              f'SLACK_WEBHOOK_URL = {repr(os.environ.get("SLACK_WEBHOOK_URL", ""))}',
-          ]
-          with open("credentials.py", "w") as f:
-              f.write("\n".join(lines) + "\n")
-          print("credentials.py written successfully.")
-          EOF
+      # ── 5. (credentials are passed as env vars directly to the pipeline step) ──
 
       # ── 6. Restore cookies.txt from secret (if provided) ───────────────────────
       - name: Restore YouTube cookies.txt
@@ -135,6 +118,9 @@ jobs:
       - name: Run auto-uploader pipeline
         env:
           DISPLAY: ":99"
+          BB_USERNAME: ${{ secrets.BB_USERNAME }}
+          BB_PASSWORD: ${{ secrets.BB_PASSWORD }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: |
           # Start a virtual display for Chrome (even in headless=new mode, some
           # Chrome builds still need an X display on Linux)
