@@ -285,22 +285,40 @@ def upload_batch_files(driver, csv_path: str, zip_path: str) -> str | None:
 
 
 def submit_batch_for_approval(driver) -> bool:
-    _, _, _, By, _, _, _, NoSuchElementException, _ = _get_selenium()
-    try:
-        btn = driver.find_element(
-            By.XPATH,
-            "//button[contains(text(), 'Submit Batch for Approval') or contains(text(), 'Submit for Approval')]"
-        )
-        log.info("Clicking 'Submit Batch for Approval'...")
-        btn.click()
-        time.sleep(3)
-        return True
-    except NoSuchElementException:
-        log.info("No approval button found (auto-submitted or already pending).")
-        return True
-    except Exception as e:
-        log.error(f"Approval submission error: {e}")
-        return False
+    _, _, _, By, WebDriverWait, _, TimeoutException, NoSuchElementException, _ = _get_selenium()
+    for attempt in range(1, 3):
+        try:
+            btn = driver.find_element(
+                By.XPATH,
+                "//button[contains(text(), 'Submit Batch for Approval') or contains(text(), 'Submit for Approval')]"
+            )
+            log.info("Clicking 'Submit Batch for Approval' (attempt %d/2)...", attempt)
+            btn.click()
+            WebDriverWait(driver, SELENIUM_WAIT_SEC).until(
+                lambda d: (
+                    "Submitted for approval" in (d.find_element(By.TAG_NAME, "body").text or "")
+                    or len(d.find_elements(By.CSS_SELECTOR, "input[type='file']")) >= 2
+                )
+            )
+            log.info("Approval submission confirmed by the dashboard.")
+            return True
+        except TimeoutException:
+            log.warning("Approval attempt %d was not confirmed; refreshing before retry", attempt)
+            driver.refresh()
+            time.sleep(3)
+        except NoSuchElementException:
+            body = driver.find_element(By.TAG_NAME, "body").text or ""
+            if "waiting for approval submission" not in body:
+                log.info("Approval button is gone and no pending approval remains.")
+                return True
+            log.warning("Approval button temporarily unavailable on attempt %d", attempt)
+            driver.refresh()
+            time.sleep(3)
+        except Exception as e:
+            log.error(f"Approval submission error: {e}")
+            return False
+    log.error("Approval submission remained unconfirmed after two attempts")
+    return False
 
 
 def run_batch_upload(batch_name: str, csv_path: str, zip_path: str, headless: bool = False) -> dict:
