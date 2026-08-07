@@ -24,6 +24,11 @@ def configure_logging(verbose: bool = False) -> None:
     formatter = logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s")
     root = logging.getLogger()
     root.setLevel(level)
+    # Selenium's DEBUG request bodies include text entered into form fields,
+    # including login credentials. Never allow those libraries to inherit the
+    # root DEBUG level when --verbose is enabled.
+    logging.getLogger("selenium").setLevel(logging.WARNING)
+    logging.getLogger("urllib3").setLevel(logging.WARNING)
     if root.handlers:
         return
     stream = logging.StreamHandler()
