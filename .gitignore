@@ -16,7 +16,10 @@ cookies.txt
 downloads/
 batches/
 logs/
+.pipeline.lock
+.DS_Store
 
-# Preserve registries directory structure in git
+# Runtime state (preserve only the directory placeholder)
+registries/*.json
 !registries/
 !registries/.gitkeep

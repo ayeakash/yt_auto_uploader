@@ -1,5 +1,6 @@
 selenium>=4.10.0
 webdriver-manager>=4.0.0
-# Requires Python 3.10+. Installed from source: PyPI releases lag behind the
-# JS-challenge/PO-token fixes needed for current YouTube extraction.
-git+https://github.com/yt-dlp/yt-dlp.git
+yt-dlp>=2026.7.4
+pytubefix>=10.11.0
+python-dotenv>=1.0.0
+gspread>=6.2.0

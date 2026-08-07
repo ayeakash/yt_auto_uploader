@@ -9,8 +9,8 @@ import json
 import time
 import logging
 from config import (
-    ADMIN_LOGIN_URL, ADMIN_UPLOAD_URL, ADMIN_BASE_URL,
-    BB_USERNAME, BB_PASSWORD, SELENIUM_WAIT_SEC, UPLOAD_RETRY_MAX, LOG_DIR
+    ADMIN_LOGIN_URL, ADMIN_UPLOAD_URL,
+    BB_USERNAME, BB_PASSWORD, SELENIUM_WAIT_SEC, LOG_DIR
 )
 
 log = logging.getLogger(__name__)
@@ -318,7 +318,13 @@ def run_batch_upload(batch_name: str, csv_path: str, zip_path: str, headless: bo
         if not job_id:
             return {"status": "failed", "job_id": None, "batch_name": batch_name, "reason": "upload_failed"}
 
-        submit_batch_for_approval(driver)
+        if not submit_batch_for_approval(driver):
+            return {
+                "status": "failed",
+                "job_id": job_id,
+                "batch_name": batch_name,
+                "reason": "approval_failed",
+            }
         return {"status": "submitted", "job_id": job_id, "batch_name": batch_name}
     except Exception as e:
         log.error(f"Execution error uploading {batch_name}: {e}")
