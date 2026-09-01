@@ -194,5 +194,18 @@
     "status": "ignored_date",
     "ignored_reason": "Uploaded before cutoff date 20260801",
     "ignored_at": "2026-08-05T11:50:34.113136"
+  },
+  "akRuJNXoGTg": {
+    "video_id": "akRuJNXoGTg",
+    "title": "Kids Learn Team Work 💪",
+    "url": "https://www.youtube.com/watch?v=akRuJNXoGTg",
+    "file_path": "/home/runner/work/yt_auto_uploader/yt_auto_uploader/downloads/BillionBuilders/Kids_Learn_Team_Work_[akRuJNXoGTg].f399.mp4",
+    "safe_name": "Kids_Learn_Team_Work",
+    "file_size": 10909766,
+    "downloaded_at": "2026-09-01T07:00:02.719606",
+    "status": "uploaded",
+    "batch_name": "Batch_BB_001",
+    "job_id": "3bb9cf1c-9695-4594-a917-c83216c1dd98",
+    "uploaded_at": "2026-09-01T07:01:10.177497"
   }
 }
