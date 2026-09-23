@@ -207,5 +207,18 @@
     "batch_name": "Batch_BB_001",
     "job_id": "3bb9cf1c-9695-4594-a917-c83216c1dd98",
     "uploaded_at": "2026-09-01T07:01:10.177497"
+  },
+  "L29djaw1tY4": {
+    "video_id": "L29djaw1tY4",
+    "title": "Kids Have Treasure Hunt Adventure 💎",
+    "url": "https://www.youtube.com/watch?v=L29djaw1tY4",
+    "file_path": "/home/runner/work/yt_auto_uploader/yt_auto_uploader/downloads/BillionBuilders/Kids_Have_Treasure_Hunt_Adventure_[L29djaw1tY4].f399.mp4",
+    "safe_name": "Kids_Have_Treasure_Hunt_Adventure",
+    "file_size": 12323674,
+    "downloaded_at": "2026-09-23T07:00:02.707724",
+    "status": "batched",
+    "batch_name": "Batch_BB_001",
+    "job_id": null,
+    "uploaded_at": null
   }
 }
